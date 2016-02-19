@@ -169,16 +169,92 @@ int main(int argc, char* argv[])
     fs2 << "D2" << D2;
 
     printf("Thermal camera calibration done\n");
+    printf("Displaying undistorted images\n");
 
-    Mat imgU1, imgU2;
-    undistort(img1, imgU1, CM1, D1);
-    undistort(img2, imgU2, CM2, D2);
+    Mat imgU1a, imgU2a;
+    undistort(img1, imgU1a, CM1, D1);
+    undistort(img2, imgU2a, CM2, D2);
 
     namedWindow("Undistorted Visual Image");
-    imshow("Undistorted Visual Image", imgU1);
+    imshow("Undistorted Visual Image", imgU1a);
     namedWindow("Undistorted Thermal Image");
-    imshow("Undistorted Thermal Image", imgU2);
+    imshow("Undistorted Thermal Image", imgU2a);
 
     waitKey(0);
+
+    destroyAllWindows();
+    printf("Starting stereo camera calibration\n");
+
+    Mat R, T, E, F;
+
+    /* BEGIN ORIGINAL INVOCATION OF STEREOCALIBRATE(...)
+     * From: https://github.com/jayrambhia/Vision/blob/master/OpenCV/C%2B%2B/stereocalibrate.cpp
+     *
+     * stereoCalibrate(object_points, imagePoints1, imagePoints2,
+     *                 CM1, D1, CM2, D2, img1.size(), R, T, E, F,
+     *                 cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
+     *                 CV_CALIB_SAME_FOCAL_LENGTH | CV_CALIB_ZERO_TANGENT_DIST);
+     */
+
+    /* BEGIN STACKOVERFLOW INVOCATION OF STEREOCALIBRATE(...)
+     * From: http://stackoverflow.com/questions/22877869/stereocalibrate-for-different-cameras-rgb-and-infrared
+     *
+     * stereoCalibrate(objectPoints, imagePoints[0], imagePoints[1],
+     *                 CM1, D1, CM2, D2, img1.size(), R, T, E, F,
+     *                 cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 50, 1e-6),
+     *                 CV_CALIB_FIX_INTRINSIC + CV_CALIB_USE_INTRINSIC_GUESS);
+	 */
+
+    // MERGED INVOCATION OF STEREOCALIBRATE(...)
+    stereoCalibrate(object_points, imagePoints1, imagePoints2,
+            CM1, D1, CM2, D2, img1.size(), R, T, E, F,
+            cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
+            CV_CALIB_FIX_INTRINSIC + CV_CALIB_USE_INTRINSIC_GUESS);
+
+    FileStorage fs3("stereocalib.yml", FileStorage::WRITE);
+    fs3 << "CM1" << CM1;
+    fs3 << "CM2" << CM2;
+    fs3 << "D1" << D1;
+    fs3 << "D2" << D2;
+    fs3 << "R" << R;
+    fs3 << "T" << T;
+    fs3 << "E" << E;
+    fs3 << "F" << F;
+
+    printf("Stereo camera calibration done\n");
+    printf("Starting stereo camera rectification\n");
+
+    Mat R1, R2, P1, P2, Q;
+
+    stereoRectify(CM1, D1, CM2, D2, img1.size(), R, T, R1, R2, P1, P2, Q);
+
+    fs3 << "R1" << R1;
+    fs3 << "R2" << R2;
+    fs3 << "P1" << P1;
+    fs3 << "P2" << P2;
+    fs3 << "Q" << Q;
+
+    printf("Stereo camera rectification done\n");
+    printf("Applying Undistort\n");
+
+    Mat map1x, map1y, map2x, map2y;
+
+    initUndistortRectifyMap(CM1, D1, R1, P1, img1.size(), CV_32FC1, map1x, map1y);
+    initUndistortRectifyMap(CM2, D2, R2, P2, img2.size(), CV_32FC1, map2x, map2y);
+
+    printf("Undistort done\n");
+    printf("Displaying remapped images\n");
+
+    Mat imgU1b, imgU2b;
+    remap(img1, imgU1b, map1x, map1y, INTER_LINEAR, BORDER_CONSTANT, Scalar());
+    remap(img2, imgU2b, map2x, map2y, INTER_LINEAR, BORDER_CONSTANT, Scalar());
+
+    namedWindow("Remapped Visual Image");
+    imshow("Remapped Visual Image", imgU1b);
+    namedWindow("Remapped Thermal Image");
+    imshow("Remapped Thermal Image", imgU2b);
+
+    waitKey(0);
+
     return 0;
 }
