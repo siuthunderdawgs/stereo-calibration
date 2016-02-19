@@ -149,6 +149,7 @@ int main(int argc, char* argv[])
     CM1.at<float>(0, 0) = 1;
     CM1.at<float>(1, 1) = 1;
 
+    double vrms =
     calibrateCamera(object_points, imagePoints1, img1.size(), CM1, D1, rvecs1, tvecs1);
 
     FileStorage fs1("visualcalib.yml", FileStorage::WRITE);
@@ -162,6 +163,7 @@ int main(int argc, char* argv[])
     CM2.at<float>(0, 0) = 1;
     CM2.at<float>(1, 1) = 1;
 
+    double trms =
     calibrateCamera(object_points, imagePoints2, img2.size(), CM2, D2, rvecs2, tvecs2);
 
     FileStorage fs2("thermalcalib.yml", FileStorage::WRITE);
@@ -179,6 +181,9 @@ int main(int argc, char* argv[])
     imshow("Undistorted Visual Image", imgU1a);
     namedWindow("Undistorted Thermal Image");
     imshow("Undistorted Thermal Image", imgU2a);
+
+    cout << "Visual Camera RMS = " << vrms << endl;
+    cout << "Thermal Camera RMS = " << trms << endl;
 
     waitKey(0);
 
@@ -206,6 +211,7 @@ int main(int argc, char* argv[])
 	 */
 
     // MERGED INVOCATION OF STEREOCALIBRATE(...)
+    double srms =
     stereoCalibrate(object_points, imagePoints1, imagePoints2,
             CM1, D1, CM2, D2, img1.size(), R, T, E, F,
             cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 100, 1e-5),
@@ -253,6 +259,8 @@ int main(int argc, char* argv[])
     imshow("Remapped Visual Image", imgU1b);
     namedWindow("Remapped Thermal Image");
     imshow("Remapped Thermal Image", imgU2b);
+
+    cout << "Stereo Camera RMS = " << srms << endl;
 
     waitKey(0);
 
